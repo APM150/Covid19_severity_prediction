@@ -4,20 +4,34 @@ from Project_Models import RNN_Model
 import torch
 import torch.nn as nn
 
+def normalize(x):
+    maxtensor = x.max(0, keepdim=True)[0]
+    maxtensor[maxtensor==0] = 1e-4
+    x_normed = x / maxtensor
+    return x_normed, maxtensor
+
 if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     df = load_data.load_county_level()
-    x = form_input_tensor(df, ['#Hospitals', '#ICU_beds']).to(device)
+
+    x = form_input_tensor(df, ['#Hospitals', '#ICU_beds', 'MedicareEnrollment,AgedTot2017', 'DiabetesPercentage']).to(device)
+    x, xmaxtensor = normalize(x)
+    print(f"#x nan: {(torch.sum(torch.isnan(x)))}")
     print("x:", x)
+
     y = form_labels_tensor(df).to(device)
-    print("y:", y)
+    y, ymaxtensor = normalize(y)
+    print(f"#y nan: {torch.sum(torch.isnan(y))}")
+    print("y:", y * ymaxtensor)
 
     model = RNN_Model.RNN(x.shape[2], 128, 2).to(device)
-    print("Before training:", model(x))
+    with torch.no_grad():
+        print("Before training:", model(x) * ymaxtensor)
 
     criterion = nn.MSELoss()
-    learning_rate = 1
-    num_epoches = 10000000
+    # criterion = nn.SmoothL1Loss()
+    learning_rate = 1e-2
+    num_epoches = 100
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     for epoch in range(num_epoches):
@@ -31,5 +45,6 @@ if __name__ == '__main__':
 
 
         print(f'Epoch [{epoch + 1}/{num_epoches}], Loss: {loss.item():.4f}')
-
-    print("After training:", model(x))
+    with torch.no_grad():
+        print("After training:", (model(x) * ymaxtensor)[10:20])
+        print("y:", (y * ymaxtensor)[10:20])
