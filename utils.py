@@ -28,3 +28,24 @@ def form_labels_tensor(df, maxload=float('+inf')):
         y.append([totalCases, totalDeaths])
     return torch.tensor(y, dtype=torch.float32)
 
+# Download data, execute this block once in a while
+# checks if dataset is downloaded at data/covid19-severity-prediction
+# updating to the latest version
+# Note: this can take a while if you don't have the dataset in data/covid19-severity-prediction
+
+import os
+import sys
+if 'data' not in os.listdir():
+    os.mkdir('data')
+os.chdir('data')
+if 'covid19-severity-prediction' not in os.listdir():
+    print("covid dataset not detected, downloading data to ./data/covid19-severity-prediction")
+    os.system('git clone https://github.com/Yu-Group/covid19-severity-prediction.git')
+os.chdir('covid19-severity-prediction')
+print("updating to the latest version")
+os.system('git pull')
+print("update successful")
+os.chdir('..')
+os.chdir('..')
+print("current working dir:", os.getcwd())
+sys.path.append("./data/covid19-severity-prediction")
