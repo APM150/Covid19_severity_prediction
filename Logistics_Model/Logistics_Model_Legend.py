@@ -9,11 +9,19 @@ class Logistics():
     def __init__(self, x, y, **kwargs):
         self.x_train = x
         self.y_train = y
+
         self.best_initials = None
         self.popt = None
         self.pcov = None
 
+        # self.y_max = 1
+        # self.normalize()
+
         self.learn_initial_variables(**kwargs)
+
+    # def normalize(self):
+    #     self.y_max = np.max(self.y_train)
+    #     self.y_train  = self.y_train / np.max(self.y_train)
 
     def epidemic_logistic_model(self, t, r0, x0, xm):
         exp = np.exp(r0 * t)
@@ -30,7 +38,7 @@ class Logistics():
             bounds = [(0, 1), (0, np.max(self.y_train)), (0, 4e6)]
         else:
             bounds = [r0_bounds, x0_bounds, xm_bounds]
-        # print(True)
+        # print(bounds)
         self.best_initials = differential_evolution(self.loss, bounds, seed=10).x
 
     def fit(self, **kwargs):
@@ -45,3 +53,5 @@ class Logistics():
     def mse(self, x, y):
         y_hat = self.predict(x)
         return mean_squared_error(y, y_hat)
+    
+    def predict_increase(self):...

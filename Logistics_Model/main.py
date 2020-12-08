@@ -1,90 +1,134 @@
-import os, load_data, pickle, sys
+import os, pickle, sys
 import numpy as np
-from Logistics_Model_Legend import Logistics
+import load_data
 import matplotlib.pyplot as plt
+from Logistics_Model_Legend import Logistics
 from collections import defaultdict
 from tqdm import tqdm
+from sklearn.metrics import mean_squared_error
+from sklearn.utils import shuffle
+
+# sys.path.append("../data/covid19-severity-prediction")
+# sys.path.append("../data/covid19-severity-prediction/data")
+os.chdir("../data")
+np.set_printoptions(suppress=True)
 
 
-if __name__ == "__main__":
-
-    sys.path.append("../data/covid19-severity-prediction")
-    sys.path.append("../data/covid19-severity-prediction/data")
-
-    os.chdir("../data")
-
-    np.set_printoptions(suppress=True)
-
-    print(os.getcwd())
-
-    df = None
-
+def data_loader():
+    
     if not "county_data.pkl" in os.listdir():
-
+        
         df = load_data.load_county_level("../data/covid19-severity-prediction/data")
-
+        
         with open("county_data.pkl", 'wb') as f:
             pickle.dump(df, f)
+    
     else:
         with open("county_data.pkl", 'rb') as f:
             df = pickle.load(f)
+    
+    return df
 
-    cases = np.array(df[(df['StateName'] == 'CA') & (df['CountyName'] == 'Orange')]['cases'].values[0])
+def get_data(df, state, county, data_type):
+    return df[(df['StateName'] == state) & (df['CountyName'] == county)][data_type].values
 
-    # print(df[(df['StateName'] == 'CA') & (df['CountyName'] == 'Orange')]['cases'])
 
-    # cases = np.array(
-    #     [288, 414, 514, 603, 671, 762, 864, 980, 1062, 1198, 1275, 1371, 1436, 1530, 1585, 1673, 1719, 1798, 1872, 1895,
-    #      1936, 1959, 1967, 1969, 1979, 1991])
+def get_prediction(y):
+    
+    y_hats = []
+    mse = []
+    params = []
+    x = np.arange(1, y.shape[0] + 1, 1)
+    
+    for i in x:
+        
+        learner=Logistics(x[:i],y[:i])
+        learner.fit(maxfev=1000000)
+        y_hats.append(learner.predict(i + 1) - learner.predict(i))
+        mse.append(mean_squared_error(y[:i], y_hats))
+        params.append(learner.popt)
+    
+    return y_hats, mse, params
+    
+
+def plot_data(cases, cases_predict, deaths = None, deaths_predict = None):
+    
+    f, ax = plt.subplots(2, 1, figsize=(16, 8))
+    
+    x = np.arange(2, cases.shape[0] + 2, 1)
+    ax[0].plot(x, cases, c = "g", label = "Case Increasement")
+    ax[0].plot(x, cases_predict, c="r", label="Case Increasement Prediction")
+    ax[0].set_title("Cases and Prediction Over Time")
+    ax[0].legend()
+    
+    if not (deaths is None or deaths_predict is None):
+        
+        x = np.arange(2, deaths.shape[0] + 2, 1)
+        ax[1].plot(x, deaths, c="g", label="Death Increasement")
+        ax[1].plot(x, deaths_predict, c="r", label="Death Increasement Prediction")
+        ax[1].set_title("Deaths and Prediction Over Time")
+        ax[1].legend()
+        
+    plt.show()
+    
+    
+if __name__ == "__main__":
+
+    # df = data_loader()
     #
+    # cases = get_data(df, "CA", "Orange", "cases")
+    # deaths = get_data(df, "CA", "Orange", "deaths")
     #
-    # x = np.arange(1, cases.shape[0] + 1, 1)
+    # c_hat, c_mse, c_params = get_prediction(cases - deaths)
     #
-    # learner = Logistics(x, cases)
+    # d_hat, d_mse, d_params = get_prediction(deaths)
     #
-    # # print(learner.learn_initial_variables())
+    # # print
+    # case_increase = np.append([0], [cases[i] - cases[i - 1] for i in range(1, len(cases))])
+    # death_increase = np.append([0], [deaths[i] - deaths[i - 1] for i in range(1, len(deaths))])
     #
-    # learner.fit(maxfev=1000000)
+    # plot_data(case_increase, c_hat, death_increase, d_hat)
     #
-    # y_hat = learner.predict(x)
-    #
-    # print(y_hat)
-    #
-    # plt.scatter(x, cases, s=0.1)
-    #
-    # plt.plot(x, y_hat, c='green')
-    #
-    # plt.show()
-    #
-    # print(learner.popt)
-    #
-    # print(learner.mse(x, cases))
+    # print("Cases Increase MSE:", mean_squared_error(case_increase, c_hat))
+    # print("Deaths Increase MSE:",mean_squared_error(death_increase, d_hat))
+    
+    
+    df = data_loader()
+
+    samples = shuffle(df.head(1610), n_samples= 600, random_state = 1)
+    
+    print(samples)
 
     countyList = []
-    for state in set(df['StateName']):
-        for county in set(df['CountyName']):
+    for state in set(samples['StateName']):
+        for county in set(samples['CountyName']):
             countyList.append((state, county))
+            
+            print(state, county)
+    
+    case_mse = []
+    death_mse = []
+    
+    for state, county in tqdm(countyList[:60]):
+        
+        cases = get_data(samples, state, county, "cases")
+        deaths = get_data(samples, state, county, "deaths")
+        
+        if len(cases) and len(deaths):
+            cases = np.array(cases[0])
+            deaths = np.array(deaths[0])
+            
+            
+            c_hat, c_mse, c_params = get_prediction(cases - deaths)
+            d_hat, d_mse, d_params = get_prediction(deaths)
 
-    learnerDict = defaultdict(lambda : defaultdict(lambda : None))
-    mseDict = defaultdict(lambda : defaultdict(float))
-
-    countyList = tqdm(countyList)
-
-    for state, county in countyList:
-
-        ctemp = df[(df['StateName'] == state) & (df['CountyName'] == county)]['cases'].values
-        # deaths = np.array(df[(df[state] == state) & (df[county] == county)]['deaths'].values[0])
-
-        if len(ctemp):
-
-            cases = np.array(ctemp[0])
-
-            x = np.arange(1, cases.shape[0] + 1, 1)
-
-            learner = Logistics(x, cases)
-            learner.fit(maxfev=100000)
-
-            learnerDict[state][county] = learner
-            mseDict[state][county] = learner.mse(x, cases)
-
-    print(mseDict)
+            case_increase = np.append([0], [cases[i] - cases[i - 1] for i in range(1, len(cases))])
+            death_increase = np.append([0], [deaths[i] - deaths[i - 1] for i in range(1, len(deaths))])
+            
+            case_mse.append(mean_squared_error(case_increase, c_hat))
+            death_mse.append(mean_squared_error(death_increase, d_hat))
+    
+    
+    
+    print(f'Average MSE of Case Increasement: {np.mean(case_mse)}')
+    print(f'Average MSE of Death Increasement: {np.mean(death_mse)}')
