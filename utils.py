@@ -8,7 +8,7 @@ def form_input_tensor(df, features: list, maxload=float('+inf')):
     :return: N x S x M tensor, where N is number of counties, S is sequence number, M is number of features
     """
     result = []
-    maxload = min(df.shape[0]-1, maxload)
+    maxload = min(df.shape[0], maxload)
     for cityInfo in df[['countyFIPS'] + features].head(maxload).values:
         allCityInfo = []  # form the sequence
         for dayICases, dayIDeath in zip(df[(df['countyFIPS'] == cityInfo[0])]['cases'].values[0][:-1],
@@ -23,7 +23,7 @@ def form_input_tensor(df, features: list, maxload=float('+inf')):
 
 def form_labels_tensor(df, maxload=float('+inf')):
     y = []
-    maxload = min(df.shape[0]-1, maxload)
+    maxload = min(df.shape[0], maxload)
     for totalCases, totalDeaths in zip(df['tot_cases'].head(maxload).values, df['tot_deaths'].head(maxload).values):
         y.append([totalCases, totalDeaths])
     return torch.tensor(y, dtype=torch.float32)

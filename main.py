@@ -12,9 +12,9 @@ def normalize(x):
 
 if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    df = load_data.load_county_level()
+    df = load_data.load_county_level('./data/covid19-severity-prediction/data')
 
-    x = form_input_tensor(df, ['#Hospitals', '#ICU_beds', 'MedicareEnrollment,AgedTot2017', 'DiabetesPercentage']).to(device)
+    x = form_input_tensor(df, ['#Hospitals', '#ICU_beds', 'MedicareEnrollment,AgedTot2017', 'DiabetesPercentage'], maxload=100).to(device)
     x, xmaxtensor = normalize(x)
     print(f"#x nan: {(torch.sum(torch.isnan(x)))}")
     print("x:", x)

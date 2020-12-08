@@ -1,3 +1,6 @@
+import sys
+sys.path.append(r'D:\dataset\CS184A-Covid19_severity_prediction\data\covid19-severity-prediction')
+
 import os, load_data, pickle, sys
 import numpy as np
 from Logistics_Model_Legend import Logistics
@@ -8,10 +11,12 @@ from tqdm import tqdm
 
 if __name__ == "__main__":
 
+    print(os.getcwd())
+
     sys.path.append("../data/covid19-severity-prediction")
     sys.path.append("../data/covid19-severity-prediction/data")
 
-    os.chdir("../data")
+    # os.chdir("../data")
 
     np.set_printoptions(suppress=True)
 
@@ -21,7 +26,7 @@ if __name__ == "__main__":
 
     if not "county_data.pkl" in os.listdir():
 
-        df = load_data.load_county_level("../data/covid19-severity-prediction/data")
+        df = load_data.load_county_level(r"D:\dataset\CS184A-Covid19_severity_prediction\data\covid19-severity-prediction\data")
 
         with open("county_data.pkl", 'wb') as f:
             pickle.dump(df, f)
@@ -68,7 +73,7 @@ if __name__ == "__main__":
     learnerDict = defaultdict(lambda : defaultdict(lambda : None))
     mseDict = defaultdict(lambda : defaultdict(float))
 
-    countyList = tqdm(countyList)
+    countyList = tqdm(countyList[:1000])
 
     for state, county in countyList:
 
@@ -77,14 +82,42 @@ if __name__ == "__main__":
 
         if len(ctemp):
 
-            cases = np.array(ctemp[0])
-
+            yhat = [0]
             x = np.arange(1, cases.shape[0] + 1, 1)
+            
+            for i in x:
+                yi = np.array(ctemp[0])[:i]
+                xi = np.arange(1, i + 1, 1)
 
-            learner = Logistics(x, cases)
-            learner.fit(maxfev=100000)
+                learner = Logistics(xi, yi)
+                learner.fit(maxfev=100000)
 
-            learnerDict[state][county] = learner
-            mseDict[state][county] = learner.mse(x, cases)
+                yhat.append(learner.predict(i + 1))
 
-    print(mseDict)
+                # learnerDict[state][county] = learner
+                # mseDict[state][county] = learner.mse(x, cases)
+
+            plt.scatter(x, cases, s=0.1)
+            plt.plot(x, yhat, c='green')
+            plt.show()
+
+    # print(mseDict)
+    
+    # yhat = [0]
+    #         x = np.arange(1, cases.shape[0] + 1, 1)
+            
+    #         for i in x:
+    #             yi = np.array(ctemp[0])[:i]
+    #             xi = np.arange(1, i + 1, 1)
+
+    #             learner = Logistics(xi, yi)
+    #             learner.fit(maxfev=100000)
+
+    #             yhat.append(learner.predict(i + 1))
+
+    #             # learnerDict[state][county] = learner
+    #             # mseDict[state][county] = learner.mse(x, cases)
+
+    #         plt.scatter(x, cases, s=0.1)
+    #         plt.plot(x, yhat, c='green')
+    #         plt.show()
