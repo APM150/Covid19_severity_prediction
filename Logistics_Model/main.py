@@ -8,6 +8,7 @@ from multiprocessing import Pool
 
 # sys.path.append("../data/covid19-severity-prediction")
 # sys.path.append("../data/covid19-severity-prediction/data")
+
 os.chdir("../data")
 np.set_printoptions(suppress=True)
 
@@ -28,7 +29,9 @@ def get_prediction(y, **kwargs):
     for i in tqdm(x, **kwargs):
         learner = Logistics(x[:i], y[:i])
         learner.fit(maxfev=1000000)
-        y_hats.append(learner.predict(i + 1) - learner.predict(i))
+        y_hats.append(learner.predict(i + 1) - y[i - 1])
+        # y_hats.append(learner.predict(i + 1) - learner.predict(i))
+        # print(y_hats)
         mse.append(mean_squared_error(y[:i], y_hats))
         params.append(learner.popt)
     
@@ -59,8 +62,8 @@ if __name__ == "__main__":
     with open("sample_testing_data.pkl", "rb") as f:
         df = pickle.load(f)
     
-    # df = df.iloc[:1]
-    
+    # df = df.head(5)
+    # print(df)
     case_mse = []
     death_mse = []
     
